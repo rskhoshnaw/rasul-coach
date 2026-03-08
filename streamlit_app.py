@@ -6,38 +6,48 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
 
 # --- ظاهر صفحه وب ---
-st.set_page_config(page_title="Smart Coach Rasul", page_icon="🧠")
-st.title("مربی هوشمند رسول آقا (نسخه حرفه‌ای)")
-st.write("در حال استفاده از مغز Gemini Pro برای مدیریت دوره‌ها...")
+st.set_page_config(page_title="Rasul Coach AI", page_icon="🏆")
+st.title("مربی مقتدر رسول آقا")
+st.write("در حال مدیریت پروژه‌های rasulsaleh.com...")
 
 # --- تنظیمات کلیدها ---
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
 GEMINI_API_KEY = 'AIzaSyA_ZLJg38IuBcTkIM0cK4oV06xNer98Vto'
 
-# پیکربندی مغز جدید (Gemini)
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-pro')
 
-# --- روح و شخصیت مربی (بسیار دقیق و عاقل) ---
+# --- روح و شخصیت مربی رسول آقا ---
 SOUL_PROMPT = """
-شما یک «مربی» بسیار باهوش، برنامه‌ریز استراتژیک و مشوق مقتدر برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
-- اهداف اصلی: ۱. مکاتبات اداری ٢. ویزیتوری (مەندوبی) ۳. اتیکت و آداب معاشرت.
-- وظیفه: مدیریت زمان، مبارزه با اعتیاد به تیک‌تاک، و نظارت بر پیشرفت دوره‌ها در rasulsaleh.com.
-- زبان: مسلط کامل به فارسی و کردی سورانی. از ضرب‌المثل‌های عمیق استفاده کنید.
-- شخصیت: شما دیگر یک ربات ساده نیستید، شما بازوی فکری رسول آقا هستید. اگر او وقت‌کشی کرد، با منطق و قدرت او را به مسیر برگردانید.
-- همیشه با این جمله شروع کنید: «رسول آقا، خب، بیا برویم!» یا «زنده باد مربی بزرگ!»
+تۆ «مربی»یت، مربی شخصی، برنامه‌ریز قاطع و مشوق پر انرژی رسول آقا (رسول صالح خوشناو) در اربیل.
+- مدل: Gemini 1.5 (بسیار هوشمند و سریع).
+- هدف ۳ ماه آینده: ضبط و فروش ۳ دوره (مکاتبات اداری، ویزیتوری/مەندوبی، اتیکت).
+- زبان: فارسی + کوردی سۆرانی + نقل‌قول‌های انگیزشی.
+- دشمن اصلی: تیک‌تاک، اینستاگرام و وب‌گردی بی‌هدف.
+- وظیفه: هر بار رسول آقا پیام داد، با انرژی زیاد او را به سمت ضبط دوره هدایت کن. اگر خسته بود، تشویقش کن. اگر تنبلی کرد، قاطعانه توبیخش کن.
+- همیشه با «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!» شروع کن.
 """
 
 async def handle_message(update: Update, context):
     if not update.message or not update.message.text:
         return
     user_text = update.message.text
-    try:
-        # استفاده از مغز قدرتمند Gemini 1.5 Pro
-        response = model.generate_content(f"{SOUL_PROMPT}\n\nپیام رسول آقا: {user_text}")
-        await update.message.reply_text(response.text)
-    except Exception as e:
-        await update.message.reply_text(f"رسول آقا، مشکلی در اتصال به مغز مرکزی پیش آمد. لطفاً دوباره بگویید. (خطا: {str(e)[:50]})")
+    
+    # لیست مدل‌هایی که امتحان می‌کنیم تا ۴۰۴ ندهد
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
+    
+    success = False
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(f"{SOUL_PROMPT}\n\nرسول آقا می‌گوید: {user_text}")
+            await update.message.reply_text(response.text)
+            success = True
+            break
+        except Exception as e:
+            continue
+            
+    if not success:
+        await update.message.reply_text("رسول آقا قهرمان، مربی در حال استراحت فنی است. لطفاً ۵ دقیقه دیگر پیام بده.")
 
 def start_bot():
     loop = asyncio.new_event_loop()
@@ -49,4 +59,4 @@ def start_bot():
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
     threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی هوشمند (Gemini Pro) بیدار شد و در تلگرام منتظر شماست!")
+    st.success("✅ مربی مقتدر (نسخه Flash) بیدار شد!")
