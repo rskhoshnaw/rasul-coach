@@ -48,7 +48,7 @@ def get_current_task():
     hour_min = now.strftime('%H:%M')
     
     # شنبه و سه‌شنبه (برنامه مشابه)
-    if day in ['Saturday', 'Tuesday']:
+    if day in ['Saturday', 'Tuesday', 'Thursday']:
         if "07:00" <= hour_min < "07:30": return "ورزش صبحگاهی برای تقویت بدن و روح"
         if "07:30" <= hour_min < "08:00": return "تمرین صدا و تنفس 🎙️"
         if "08:00" <= hour_min < "09:00": return "برنامه‌ریزی روز"
@@ -65,7 +65,7 @@ def get_current_task():
         if "23:00" <= hour_min: return "وقت خواب (شب خوش قهرمان)"
     
     # یکشنبه و دوشنبه (روزهای اداره)
-    elif day in ['Sunday', 'Monday']:
+    elif day in ['Sunday', 'Monday', 'Wednesday']:
         if "08:00" <= hour_min < "14:00": return "حضور در اداره (راپورتهای تضمین کیفیت و کارهای اداری) 🏢"
         if "14:30" <= hour_min < "16:00": return "استراحت و خانواده"
         if "16:00" <= hour_min < "16:30": return "تمرین صدا و تنفس 🎙️"
@@ -130,3 +130,4 @@ if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
     threading.Thread(target=start_bot, daemon=True).start()
     st.success("✅ مربی و برنامه‌ریز بیدار شد! (یادآوری‌های ساعتی فعال است)")
+
