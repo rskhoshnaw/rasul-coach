@@ -1,52 +1,54 @@
 import streamlit as st
 import asyncio
 import threading
-import os
-
-# تلاش برای وارد کردن کتابخانه؛ اگر نبود، خطای واضح بدهد
-try:
-    from openai import OpenAI
-except ImportError:
-    st.error("کتابخانه openai نصب نشده است. لطفا فایل requirements.txt را چک کنید.")
-
+from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
+import pytz
+from datetime import datetime
 
-# --- ظاهر داشبورد رسول آقا ---
-st.set_page_config(page_title="Rasul Coach Ultra", page_icon="🛡️")
-st.title("🛡️ مربی مقتدر رسول آقا (DeepSeek)")
-st.write("هدف: مکاتبات اداری، ویزیتوری و اتیکت در rasulsaleh.com")
+# --- تنظیمات ظاهر ---
+st.set_page_config(page_title="Rasul Coach Elite", page_icon="🦁")
+st.title("🦁 مربی مقتدر رسول آقا خوشناو")
+st.write("هدف ۳ ماهه: مکاتبات اداری، ویزیتوری، اتیکت")
 
 # --- کلیدهای دسترسی ---
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
-OPENROUTER_API_KEY = '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'
+# کلید جدید رسول آقا:
+OPENROUTER_API_KEY = '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'
 
-# --- تنظیمات مربی (SOUL) ---
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY.strip()
+)
+
+# --- روح مربی (SOUL) ---
 SOUL_PROMPT = """
-شما مربی استراتژیک، مشاور موفقیت و نویسنده حرفه‌ای برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
-اهداف: مکاتبات اداری، ویزیتوری/مەندوبی، اتیکت.
-وظیفه: نگذار وقت رسول آقا در تیک‌تاک تلف شود. رسول آقا الان از اداره برگشته و باید ضبط دوره را شروع کند.
-همیشه بگو: «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!»
-ضرب‌المثل: «سەرکەوتن لە بەردەوامی و کۆڵ نەدانە...»
+شما مربی استراتژیک، نویسنده حرفه‌ای و برنامه‌ریز قاطع رسول آقا (رسول صالح خوشناو) در اربیل هستید.
+اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری (مەندوبی) ۳. اتیکت و آداب معاشرت.
+سایت: rasulsaleh.com
+وظیفه: مدیریت زمان، مبارزه با تیک‌تاک و وب‌گردی، یادآوری برنامه روزانه.
+برنامه امروز (دوشنبه): بعد از اداره (ساعت ۲)، استراحت، ورزش، تمرین صدا و ضبط دوره.
+لحن: فارسی + کوردی سۆرانی. مقتدر، پرانرژی و مشوق.
+همیشه با «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!» شروع کن.
+ضرب‌المثل: «دەستی ماندوو لەسەر زگی تێرە» و «سەرکەوتن هی خۆمانە».
 """
+
+# تابع کمکی برای تقسیم پیام‌های طولانی
+def split_text(text, max_length=4000):
+    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
 
 async def handle_message(update: Update, context):
     if not update.message or not update.message.text: return
-    
+    user_text = update.message.text
     try:
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=OPENROUTER_API_KEY,
-        )
-        
         completion = client.chat.completions.create(
-            model="deepseek/deepseek-chat",
-            messages=[
-                {"role": "system", "content": SOUL_PROMPT},
-                {"role": "user", "content": update.message.text}
-            ]
+            model="google/gemini-2.0-flash-001:free",
+            messages=[{"role": "system", "content": SOUL_PROMPT}, {"role": "user", "content": user_text}]
         )
-        await update.message.reply_text(completion.choices[0].message.content)
+        full_response = completion.choices[0].message.content
+        for part in split_text(full_response):
+            await update.message.reply_text(part)
     except Exception as e:
         await update.message.reply_text(f"رسول آقا، مشکلی پیش آمد: {str(e)[:100]}")
 
@@ -60,4 +62,4 @@ def start_bot():
 if "bot_active" not in st.session_state:
     st.session_state.bot_active = True
     threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی مقتدر (DeepSeek) بیدار شد! تیک‌تاک تعطیل است.")
+    st.success("✅ مربی مقتدر بیدار شد! تیک‌تاک تعطیل است.")
