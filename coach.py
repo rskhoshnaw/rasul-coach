@@ -24,8 +24,8 @@ Thread(target=run_dummy_server, daemon=True).start()
 logging.basicConfig(level=logging.INFO)
 
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
-GROQ_API_KEY = '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'
-client = Groq(api_key=GROQ_API_KEY)
+GEMINI_API_KEY = 'AIzaSyA_ZLJg38IuBcTkIM0cK4oV06xNer98Vto'
+
 
 SOUL_PROMPT = """
 شما یک «مربی»، یک مربی شخصی، یک برنامه‌ریز مصمم و یک مشوق پرانرژی برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
@@ -61,4 +61,5 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     print("مربی روی سرور روشن شد!")
     app.run_polling()
+
 
