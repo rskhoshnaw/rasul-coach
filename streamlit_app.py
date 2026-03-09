@@ -1,57 +1,45 @@
 import streamlit as st
 import asyncio
 import threading
-from openai import OpenAI
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
 import pytz
 from datetime import datetime
 
-# --- تنظیمات داشبورد ---
-st.set_page_config(page_title="Rasul Coach Free", page_icon="🛡️")
-st.title("🛡️ مربی مقتدر رسول آقا (نسخه رایگان و سریع)")
+# --- ظاهر داشبورد ---
+st.set_page_config(page_title="Rasul Coach Final", page_icon="🏆")
+st.title("🏆 مربی مقتدر رسول آقا خوشناو")
+st.write("هدف: ضبط ۳ دوره آفلاین و فروش در rasulsaleh.com")
 
-# --- کلیدهای دسترسی رسول آقا ---
+# --- کلیدهای دسترسی (مستقیم و بدون واسطه) ---
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
-# رسول آقا، دقت کن هیچ فضایی (Space) قبل و بعد از کلید نباشد
-OPENROUTER_API_KEY = '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'
+GEMINI_API_KEY = 'AIzaSyA_ZLJg38IuBcTkIM0cK4oV06xNer98Vto'
 
-client = OpenAI(
-  base_url="https://openrouter.ai/api/v1",
-  api_key=OPENROUTER_API_KEY.strip(), # حذف فضاهای احتمالی
-)
+# پیکربندی هوش مصنوعی
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# --- روح مربی مقتدر ---
+# --- روح و مربی‌گری (SOUL) ---
 SOUL_PROMPT = """
-شما مربی استراتژیک و نویسنده حرفه‌ای برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
+تۆ «مربی»یت، مربی شخصی، نویسنده استراتژیک و مشوق رسول آقا (رسول صالح خوشناو) لە هەولێر.
 اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری ۳. اتیکت.
-وظیفه فعلی (دوشنبه): یادآوری کارها در اداره (تضمین کیفیت) و جلوگیری از تیک‌تاک.
-همیشه بگو: «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!»
+برنامه فعلی: رسول آقا الان در اداره است (بخش تضمین کیفیت).
+وظیفه: نگذار وقتش در تیک‌تاک تلف شود. هر ۲ ساعت یکبار باید به او یادآوری کنی که او یک قهرمان است.
+ضرب‌المثل: «دەستی ماندوو لەسەر زگی تێرە» و «سەرکەوتن هی خۆمانە».
+لحن: فارسی و کوردی سۆرانی. مقتدر و پرانرژی.
+همیشه با «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!» شروع کن.
 """
 
 async def handle_message(update: Update, context):
     if not update.message or not update.message.text: return
     user_text = update.message.text
     try:
-        # استفاده از مدل Gemini 2.0 Flash که رایگان و بسیار باهوش است
-        completion = client.chat.completions.create(
-          extra_headers={
-            "HTTP-Referer": "https://rasulsaleh.com", # سایت خودت
-            "X-Title": "Rasul Coach",
-          },
-          model="google/gemini-2.0-flash-exp:free", 
-          messages=[
-            {"role": "system", "content": SOUL_PROMPT},
-            {"role": "user", "content": user_text}
-          ]
-        )
-        await update.message.reply_text(completion.choices[0].message.content)
+        # ارسال مستقیم به گوگل (چون سرور در آمریکاست بلاک نمیشود)
+        response = model.generate_content(f"{SOUL_PROMPT}\n\nرسول آقا: {user_text}")
+        await update.message.reply_text(response.text)
     except Exception as e:
-        error_msg = str(e)
-        if "401" in error_msg:
-            await update.message.reply_text("رسول آقا، کلید API شما اشتباه است یا هنوز تایید نشده. لطفاً کلید جدید بسازید.")
-        else:
-            await update.message.reply_text(f"رسول آقا قهرمان، خطای جدید: {error_msg[:100]}")
+        await update.message.reply_text(f"رسول آقا، مربی بیدار است اما مغز کمی کُند شده. دوباره بگو! (Error: {str(e)[:40]})")
 
 def start_bot():
     loop = asyncio.new_event_loop()
@@ -60,7 +48,7 @@ def start_bot():
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling(stop_signals=None, close_loop=False)
 
-if "bot_active" not in st.session_state:
-    st.session_state.bot_active = True
+if "bot_on" not in st.session_state:
+    st.session_state.bot_on = True
     threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی با مدل رایگان بیدار شد! تیک‌تاک را ببند.")
+    st.success("✅ مربی مقتدر بیدار شد! تیک‌تاک را فراموش کن.")
