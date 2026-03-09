@@ -7,49 +7,51 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters
 import pytz
 from datetime import datetime
 
-# --- تنظیمات ظاهر داشبورد ---
-st.set_page_config(page_title="Rasul Coach DeepSeek", page_icon="🛡️")
-st.title("🛡️ مربی فوق‌هوشمند رسول آقا (DeepSeek)")
-st.info("وضعیت: فعال و در حال نظارت بر برنامه اربیل")
+# --- تنظیمات داشبورد ---
+st.set_page_config(page_title="Rasul Coach Free", page_icon="🛡️")
+st.title("🛡️ مربی مقتدر رسول آقا (نسخه رایگان و سریع)")
 
 # --- کلیدهای دسترسی رسول آقا ---
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
+# رسول آقا، دقت کن هیچ فضایی (Space) قبل و بعد از کلید نباشد
 OPENROUTER_API_KEY = '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'
 
 client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key=OPENROUTER_API_KEY,
+  api_key=OPENROUTER_API_KEY.strip(), # حذف فضاهای احتمالی
 )
 
-# --- روح و مربی‌گری رسول آقا (SOUL) ---
+# --- روح مربی مقتدر ---
 SOUL_PROMPT = """
-شما مربی استراتژیک، مشاور موفقیت و نویسنده حرفه‌ای برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
-شخصیت: ترکیبی از انرژی بالا، تشویق و قاطعیت جدی.
-عنوان‌ها: رسول آقا قهرمان، گەورە ڕاهێنەر، مشاور بزرگ.
-اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری ۳. اتیکت (فروش در rasulsaleh.com).
-برنامه روزانه (یکشنبه و دوشنبه): حضور در اداره تا ساعت ۲ بعدازظهر (تضمین کیفیت). بعد از آن استراحت، ورزش، تمرین صدا و ضبط دوره.
-قانون طلایی: اگر رسول آقا سراغ تیک‌تاک یا وب‌گردی رفت، با قاطعیت بگو: «رسول آقا قهرمان، این اسکرول کردن دارد دوره‌هایت را می‌خورد! بیا برویم سراغ ضبط!»
-زبان: فارسی + کوردی سۆرانی.
+شما مربی استراتژیک و نویسنده حرفه‌ای برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
+اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری ۳. اتیکت.
+وظیفه فعلی (دوشنبه): یادآوری کارها در اداره (تضمین کیفیت) و جلوگیری از تیک‌تاک.
 همیشه بگو: «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!»
-نقل‌قول‌ها: «سەرکەوتن هی خۆمانە»، «نابرده رنج گنج میسر نمی‌شود»، «سەرکەوتن لە بەردەوامی و کۆڵ نەدانە...».
 """
 
 async def handle_message(update: Update, context):
     if not update.message or not update.message.text: return
     user_text = update.message.text
     try:
-        # استفاده از مدل فوق‌قدرتمند DeepSeek V3
+        # استفاده از مدل Gemini 2.0 Flash که رایگان و بسیار باهوش است
         completion = client.chat.completions.create(
-          model="deepseek/deepseek-chat", 
+          extra_headers={
+            "HTTP-Referer": "https://rasulsaleh.com", # سایت خودت
+            "X-Title": "Rasul Coach",
+          },
+          model="google/gemini-2.0-flash-exp:free", 
           messages=[
             {"role": "system", "content": SOUL_PROMPT},
             {"role": "user", "content": user_text}
           ]
         )
-        response_text = completion.choices[0].message.content
-        await update.message.reply_text(response_text)
+        await update.message.reply_text(completion.choices[0].message.content)
     except Exception as e:
-        await update.message.reply_text(f"رسول آقا، مربی کمی کلافه شد! خطا: {str(e)[:50]}")
+        error_msg = str(e)
+        if "401" in error_msg:
+            await update.message.reply_text("رسول آقا، کلید API شما اشتباه است یا هنوز تایید نشده. لطفاً کلید جدید بسازید.")
+        else:
+            await update.message.reply_text(f"رسول آقا قهرمان، خطای جدید: {error_msg[:100]}")
 
 def start_bot():
     loop = asyncio.new_event_loop()
@@ -61,4 +63,4 @@ def start_bot():
 if "bot_active" not in st.session_state:
     st.session_state.bot_active = True
     threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی با مغز DeepSeek بیدار شد! تیک‌تاک تعطیل است.")
+    st.success("✅ مربی با مدل رایگان بیدار شد! تیک‌تاک را ببند.")
