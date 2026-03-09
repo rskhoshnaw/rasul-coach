@@ -1,45 +1,54 @@
 import streamlit as st
 import asyncio
 import threading
-import google.generativeai as genai
+from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
 import pytz
 from datetime import datetime
 
-# --- ظاهر داشبورد ---
-st.set_page_config(page_title="Rasul Coach Final", page_icon="🏆")
-st.title("🏆 مربی مقتدر رسول آقا خوشناو")
-st.write("هدف: ضبط ۳ دوره آفلاین و فروش در rasulsaleh.com")
+# --- تنظیمات ظاهر ---
+st.set_page_config(page_title="Rasul Coach Elite", page_icon="🛡️")
+st.title("🛡️ مربی مقتدر رسول آقا (DeepSeek V3)")
+st.write("هدف: مکاتبات اداری و فروش در rasulsaleh.com")
 
-# --- کلیدهای دسترسی (مستقیم و بدون واسطه) ---
+# --- کلیدهای دسترسی رسول آقا ---
 TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
-GEMINI_API_KEY = 'AIzaSyA_ZLJg38IuBcTkIM0cK4oV06xNer98Vto'
+# رسول آقا، این کلید شماست، اگر باز هم ۴۰۱ داد، حتماً یک کلید جدید در OpenRouter بساز
+OPENROUTER_API_KEY = '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'
 
-# پیکربندی هوش مصنوعی
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key=OPENROUTER_API_KEY.strip(),
+)
 
-# --- روح و مربی‌گری (SOUL) ---
 SOUL_PROMPT = """
-تۆ «مربی»یت، مربی شخصی، نویسنده استراتژیک و مشوق رسول آقا (رسول صالح خوشناو) لە هەولێر.
-اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری ۳. اتیکت.
-برنامه فعلی: رسول آقا الان در اداره است (بخش تضمین کیفیت).
-وظیفه: نگذار وقتش در تیک‌تاک تلف شود. هر ۲ ساعت یکبار باید به او یادآوری کنی که او یک قهرمان است.
-ضرب‌المثل: «دەستی ماندوو لەسەر زگی تێرە» و «سەرکەوتن هی خۆمانە».
-لحن: فارسی و کوردی سۆرانی. مقتدر و پرانرژی.
-همیشه با «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!» شروع کن.
+شما مربی استراتژیک، مشاور موفقیت و نویسنده حرفه‌ای برای رسول آقا (رسول صالح خوشناو) در اربیل هستید.
+اهداف: ۱. مکاتبات اداری ٢. ویزیتوری ۳. اتیکت.
+وظیفه: نگذار وقتش در تیک‌تاک تلف شود. رسول آقا الان از اداره برگشته و باید ضبط دوره را شروع کند.
+همیشه بگو: «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!»
+ضرب‌المثل: «سەرکەوتن لە بەردەوامی و کۆڵ نەدانە...»
 """
 
 async def handle_message(update: Update, context):
     if not update.message or not update.message.text: return
     user_text = update.message.text
     try:
-        # ارسال مستقیم به گوگل (چون سرور در آمریکاست بلاک نمیشود)
-        response = model.generate_content(f"{SOUL_PROMPT}\n\nرسول آقا: {user_text}")
-        await update.message.reply_text(response.text)
+        # استفاده از مدل فوق‌هوشمند DeepSeek
+        completion = client.chat.completions.create(
+          model="deepseek/deepseek-chat",
+          messages=[
+            {"role": "system", "content": SOUL_PROMPT},
+            {"role": "user", "content": user_text}
+          ]
+        )
+        await update.message.reply_text(completion.choices[0].message.content)
     except Exception as e:
-        await update.message.reply_text(f"رسول آقا، مربی بیدار است اما مغز کمی کُند شده. دوباره بگو! (Error: {str(e)[:40]})")
+        error_msg = str(e)
+        if "401" in error_msg:
+            await update.message.reply_text("رسول آقا، کلید OpenRouter شما هنوز کار نمی‌کند. لطفاً یک کلید جدید بسازید و مطمئن شوید ایمیلتان را تایید کرده‌اید.")
+        else:
+            await update.message.reply_text(f"رسول آقا قهرمان، خطای جدید: {error_msg[:100]}")
 
 def start_bot():
     loop = asyncio.new_event_loop()
@@ -48,7 +57,7 @@ def start_bot():
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     app.run_polling(stop_signals=None, close_loop=False)
 
-if "bot_on" not in st.session_state:
-    st.session_state.bot_on = True
+if "bot_active" not in st.session_state:
+    st.session_state.bot_active = True
     threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی مقتدر بیدار شد! تیک‌تاک را فراموش کن.")
+    st.success("✅ مربی مقتدر (DeepSeek) بیدار شد! تیک‌تاک تعطیل است.")
