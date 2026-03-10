@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import pytz
 import random
+import asyncio
 
 # --------- Secrets ---------
 
@@ -207,14 +208,16 @@ def night_report(bot):
 
 def start_bot():
 
-    app=ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    app.add_handler(MessageHandler(filters.TEXT,handle_message))
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    bot=app.bot
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+
+    bot = app.bot
 
     threading.Thread(target=reminder_loop,args=(bot,),daemon=True).start()
-
     threading.Thread(target=night_report,args=(bot,),daemon=True).start()
 
     app.run_polling()
@@ -230,3 +233,4 @@ if "bot_started" not in st.session_state:
     threading.Thread(target=start_bot,daemon=True).start()
 
     st.session_state.bot_started=True
+
