@@ -1,4 +1,6 @@
-python-telegram-bot
-openai
+python-telegram-bot==13.15
+google-generativeai
 streamlit
 pytz
+schedule
+requests
