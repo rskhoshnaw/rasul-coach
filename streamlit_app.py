@@ -11,8 +11,8 @@ import random
 # Secrets
 # -------------------
 
-TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
-GEMINI_KEY = st.secrets["GEMINI_KEY"]
+TELEGRAM_TOKEN = st.secrets["8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc"]
+GEMINI_KEY = st.secrets["AIzaSyA_ZLJg38IuBcTkIM0cK4oV06xNer98Vto"]
 
 # -------------------
 # Gemini
@@ -298,3 +298,4 @@ if "bot_started" not in st.session_state:
     threading.Thread(target=start_bot,daemon=True).start()
 
     st.session_state.bot_started=True
+
