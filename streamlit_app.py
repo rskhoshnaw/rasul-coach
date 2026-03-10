@@ -1,65 +1,300 @@
 import streamlit as st
-import asyncio
+import google.generativeai as genai
+from telegram.ext import Updater, MessageHandler, Filters
 import threading
-from openai import OpenAI
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters
-import pytz
+import time
 from datetime import datetime
+import pytz
+import random
 
-# --- تنظیمات ظاهر ---
-st.set_page_config(page_title="Rasul Coach Elite", page_icon="🦁")
-st.title("🦁 مربی مقتدر رسول آقا خوشناو")
-st.write("هدف ۳ ماهه: مکاتبات اداری، ویزیتوری، اتیکت")
+# -------------------
+# Secrets
+# -------------------
 
-# --- کلیدهای دسترسی ---
-TELEGRAM_TOKEN = '8764176369:AAGMxRQgHral5z2l3IZgOXHtdGY4YQPMSuc'
-# کلید جدید رسول آقا:
-OPENROUTER_API_KEY = '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'
+TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
+GEMINI_KEY = st.secrets["GEMINI_KEY"]
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY.strip()
-)
+# -------------------
+# Gemini
+# -------------------
 
-# --- روح مربی (SOUL) ---
-SOUL_PROMPT = """
-شما مربی استراتژیک، نویسنده حرفه‌ای و برنامه‌ریز قاطع رسول آقا (رسول صالح خوشناو) در اربیل هستید.
-اهداف ۳ ماهه: ۱. مکاتبات اداری ٢. ویزیتوری (مەندوبی) ۳. اتیکت و آداب معاشرت.
-سایت: rasulsaleh.com
-وظیفه: مدیریت زمان، مبارزه با تیک‌تاک و وب‌گردی، یادآوری برنامه روزانه.
-برنامه امروز (دوشنبه): بعد از اداره (ساعت ۲)، استراحت، ورزش، تمرین صدا و ضبط دوره.
-لحن: فارسی + کوردی سۆرانی. مقتدر، پرانرژی و مشوق.
-همیشه با «رسول آقا، خب، بیا برویم!» یا «هەر بژی گەورە ڕاهێنەر!» شروع کن.
-ضرب‌المثل: «دەستی ماندوو لەسەر زگی تێرە» و «سەرکەوتن هی خۆمانە».
+genai.configure(api_key=GEMINI_KEY)
+
+model = None
+
+try:
+    model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception as e:
+    print("Gemini init error:", e)
+
+# -------------------
+# Timezone
+# -------------------
+
+tz = pytz.timezone("Asia/Baghdad")
+
+# -------------------
+# User Data
+# -------------------
+
+chat_id = None
+last_user_message = time.time()
+
+# -------------------
+# System Prompt
+# -------------------
+
+SYSTEM_PROMPT = """
+تو مربی شخصی رسول صالح خوشناو هستی.
+
+نام او: رسول آقا
+
+لحن:
+فارسی + کوردی سورانی
+انرژی بالا
+قاطع و انگیزشی
+
+تکیه کلام ها:
+رسول آقا، خب، بیا برویم!
+سەرکەوتن هی خۆمانە
+
+اهداف ۳ ماهه:
+
+1 ضبط دوره مکاتبات اداری
+2 ضبط دوره ویزیتوری
+3 ضبط دوره اتیکت
+
+وظیفه:
+جلوگیری از تنبلی
+تمرکز روی تولید دوره
+تمرکز روی بازاریابی rasulsaleh.com
 """
 
-# تابع کمکی برای تقسیم پیام‌های طولانی
-def split_text(text, max_length=4000):
-    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
+# -------------------
+# Schedule
+# -------------------
 
-async def handle_message(update: Update, context):
-    if not update.message or not update.message.text: return
+schedule = {
+
+"Saturday":[
+("07:00","ورزش"),
+("07:30","تمرین صدا"),
+("08:00","برنامه ریزی روز"),
+("09:00","تهیه دوره"),
+("13:00","مکاتبات اداری"),
+("18:30","بازاریابی سایت"),
+("21:00","دیدار والدین")
+],
+
+"Tuesday":[
+("07:00","ورزش"),
+("07:30","تمرین صدا"),
+("08:00","برنامه ریزی"),
+("09:00","تهیه دوره"),
+("13:00","مکاتبات اداری"),
+("18:30","بازاریابی سایت"),
+("21:00","دیدار والدین")
+],
+
+"Sunday":[
+("08:00","رفتن به اداره"),
+("10:00","تمرکز در اداره"),
+("12:00","ادامه کار"),
+("16:00","تمرین صدا"),
+("17:00","تهیه دوره"),
+("20:00","بازاریابی سایت"),
+("21:00","دیدار والدین")
+],
+
+"Monday":[
+("08:00","رفتن به اداره"),
+("10:00","تمرکز در اداره"),
+("12:00","ادامه کار"),
+("16:00","تمرین صدا"),
+("17:00","تهیه دوره"),
+("20:00","بازاریابی سایت"),
+("21:00","دیدار والدین")
+]
+
+}
+
+# -------------------
+# Motivational messages
+# -------------------
+
+motivation = [
+
+"رسول آقا! تمرکز! امروز آینده ساخته می‌شود.",
+"TikTok صبر می‌کند، موفقیت نه!",
+"سەرکەوتن هی خۆمانە 🔥",
+"یک ساعت تمرکز = یک قدم به آزادی مالی",
+"رسول آقا خب بیا برویم!"
+]
+
+# -------------------
+# Telegram handler
+# -------------------
+
+def handle_message(update, context):
+
+    global chat_id,last_user_message
+
+    chat_id = update.message.chat_id
     user_text = update.message.text
+
+    last_user_message = time.time()
+
+    prompt = SYSTEM_PROMPT + "\nUser:" + user_text
+
     try:
-        completion = client.chat.completions.create(
-            model="google/gemini-2.0-flash-001:free",
-            messages=[{"role": "system", "content": SOUL_PROMPT}, {"role": "user", "content": user_text}]
-        )
-        full_response = completion.choices[0].message.content
-        for part in split_text(full_response):
-            await update.message.reply_text(part)
+
+        response = model.generate_content(prompt)
+
+        reply = response.text
+
     except Exception as e:
-        await update.message.reply_text(f"رسول آقا، مشکلی پیش آمد: {str(e)[:100]}")
+
+        reply = f"""
+رسول آقا ⚠️
+
+خطا در ارتباط با هوش مصنوعی
+
+{str(e)}
+
+بعداً دوباره امتحان کن
+"""
+
+    update.message.reply_text(reply)
+
+# -------------------
+# Reminder Engine
+# -------------------
+
+def reminder_loop(bot):
+
+    last_sent = ""
+
+    while True:
+
+        now = datetime.now(tz)
+
+        day = now.strftime("%A")
+        current = now.strftime("%H:%M")
+
+        if day in schedule:
+
+            for t,task in schedule[day]:
+
+                if t == current and last_sent != current:
+
+                    if chat_id:
+
+                        msg = f"""
+رسول آقا!
+
+زمان:
+{task}
+
+{random.choice(motivation)}
+
+خب بیا برویم!
+"""
+
+                        bot.send_message(chat_id,msg)
+
+                    last_sent = current
+
+        time.sleep(60)
+
+# -------------------
+# Anti procrastination
+# -------------------
+
+def focus_guard(bot):
+
+    while True:
+
+        if chat_id:
+
+            idle = time.time() - last_user_message
+
+            if idle > 7200:
+
+                bot.send_message(chat_id,
+                """رسول آقا!
+
+۲ ساعت است از تو خبری نیست.
+
+آیا روی دوره‌ها کار می‌کنی یا وقت در شبکه‌های اجتماعی می‌گذرد؟
+
+سەرکەوتن هی خۆمانە
+""")
+
+        time.sleep(1800)
+
+# -------------------
+# Night report
+# -------------------
+
+def night_report(bot):
+
+    while True:
+
+        now = datetime.now(tz)
+
+        if now.strftime("%H:%M") == "22:30":
+
+            if chat_id:
+
+                bot.send_message(chat_id,
+"""
+رسول آقا 🌙
+
+وقت گزارش شبانه است.
+
+امروز:
+
+۱ چند ساعت روی دوره‌ها کار کردی؟
+۲ آیا بازاریابی سایت انجام شد؟
+۳ فردا چه کاری مهم‌تر است؟
+
+جواب بده تا برنامه فردا را تنظیم کنیم.
+""")
+
+        time.sleep(60)
+
+# -------------------
+# Start bot
+# -------------------
 
 def start_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    app.run_polling(stop_signals=None, close_loop=False)
 
-if "bot_active" not in st.session_state:
-    st.session_state.bot_active = True
-    threading.Thread(target=start_bot, daemon=True).start()
-    st.success("✅ مربی مقتدر بیدار شد! تیک‌تاک تعطیل است.")
+    updater = Updater(TELEGRAM_TOKEN,use_context=True)
+
+    dp = updater.dispatcher
+
+    dp.add_handler(MessageHandler(Filters.text,handle_message))
+
+    updater.start_polling()
+
+    bot = updater.bot
+
+    threading.Thread(target=reminder_loop,args=(bot,),daemon=True).start()
+    threading.Thread(target=focus_guard,args=(bot,),daemon=True).start()
+    threading.Thread(target=night_report,args=(bot,),daemon=True).start()
+
+    updater.idle()
+
+# -------------------
+# Streamlit
+# -------------------
+
+st.title("AI Coach for Rasul Saleh")
+
+st.write("Bot running...")
+
+if "bot_started" not in st.session_state:
+
+    threading.Thread(target=start_bot,daemon=True).start()
+
+    st.session_state.bot_started=True
